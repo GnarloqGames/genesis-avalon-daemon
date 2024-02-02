@@ -9,6 +9,7 @@ import (
 
 	"github.com/GnarloqGames/genesis-avalon-daemon/logging"
 	"github.com/GnarloqGames/genesis-avalon-daemon/router"
+	"github.com/GnarloqGames/genesis-avalon-daemon/worker"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,7 +23,7 @@ var (
 
 const (
 	defaultNatsAddress string = "127.0.0.1:4222"
-	defaultNatsEncoder string = "json"
+	defaultNatsEncoder string = "protobuf"
 )
 
 var rootCmd = &cobra.Command{
@@ -43,7 +44,9 @@ var startCmd = &cobra.Command{
 		}
 		defer bus.Close()
 
-		router.New(bus)
+		pool := worker.NewSystem()
+
+		router.New(bus, pool)
 
 		<-stopChan
 		slog.Info("shutting down daemon")
