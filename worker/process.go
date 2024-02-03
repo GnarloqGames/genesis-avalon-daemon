@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -13,16 +12,14 @@ type Process struct {
 	ID     uuid.UUID
 	Status Status
 	Task   Task
-
-	signals chan signal
+	stop   chan struct{}
 }
 
 func newProcess(task Task) *Process {
 	process := &Process{
-		ID:   uuid.New(),
+		ID:   task.GetID(),
 		Task: task,
-
-		signals: make(chan signal),
+		stop: make(chan struct{}),
 	}
 
 	return process
@@ -38,27 +35,60 @@ func (p *Process) SetStatus(status Status) {
 	p.Status = status
 }
 
-func (p *Process) Start() {
-	go func() {
-		for signal := range p.signals {
-			p.SetStatus(signal.status())
-			slog.Info("received signal",
-				"task_id", signal.task(),
-				"status", signal.status(),
-				"timestamp", signal.timestamp().Format(time.RFC1123),
-			)
-		}
-	}()
+func (p *Process) Start(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// Only start a task if it hasn't been completed yet
+	if p.Status != StatusPending {
+		return
+	}
 
 	p.SetStatus(StatusInProgress)
-	if err := p.Task.Run(context.Background(), p.signals); err != nil {
-		p.SetStatus(StatusFailed)
+	if err := p.Task.Run(context.Background(), p.stop); err != nil {
+		if err == ErrInterrupted {
+			p.SetStatus(StatusInterrupted)
+			return
+		} else {
+			p.SetStatus(StatusFailed)
+			return
+		}
 	} else {
 		p.SetStatus(StatusDone)
+		return
+	}
+}
+
+func (p *Process) Stop() {
+	// Only send stop signals to tasks that are still running
+	if p.Status == StatusInProgress {
+		p.stop <- struct{}{}
 	}
 }
 
 type ProcessStore struct {
 	mx    *sync.Mutex
 	store map[uuid.UUID]*Process
+}
+
+func NewStore() *ProcessStore {
+	return &ProcessStore{
+		mx:    &sync.Mutex{},
+		store: make(map[uuid.UUID]*Process),
+	}
+}
+
+func (p *ProcessStore) Add(process *Process) {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+
+	p.store[process.ID] = process
+}
+
+func (p *ProcessStore) Range(action func(pp *Process)) {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+
+	for _, process := range p.store {
+		action(process)
+	}
 }

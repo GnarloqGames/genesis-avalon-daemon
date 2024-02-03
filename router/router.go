@@ -6,6 +6,7 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-daemon/worker"
 	"github.com/GnarloqGames/genesis-avalon-kit/proto"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -39,6 +40,12 @@ func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
 			Status:    proto.Status_OK,
 		},
 		Response: "hi",
+	}
+
+	r.pool.Inbox() <- &worker.BuildTask{
+		ID:       uuid.New(),
+		Name:     b.Name,
+		Duration: b.Duration,
 	}
 
 	if err := r.bus.Publish(reply, res); err != nil {

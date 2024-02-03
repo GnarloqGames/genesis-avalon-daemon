@@ -8,20 +8,26 @@ const (
 	StatusFailed
 	StatusDone
 	StatusInterrupted
+
+	LabelStatusPending     string = "pending"
+	LabelStatusInProgress  string = "running"
+	LabelStatusDone        string = "done"
+	LabelStatusFailed      string = "failed"
+	LabelStatusInterrupted string = "interrupted"
 )
 
 func (s Status) String() string {
 	switch s {
 	case StatusPending:
-		return "pending"
+		return LabelStatusPending
 	case StatusInProgress:
-		return "running"
+		return LabelStatusInProgress
 	case StatusDone:
-		return "done"
+		return LabelStatusDone
 	case StatusFailed:
-		return "failed"
+		return LabelStatusFailed
 	case StatusInterrupted:
-		return "interrupted"
+		return LabelStatusInterrupted
 	}
 
 	return ""
