@@ -8,3 +8,7 @@ steps:
   image: golang
   commands:
   - go test ./...
+  - go build ./cmd/daemon/...
+---
+kind: signature
+hmac: 424a77569032277aa04865c87201d801eac73a2665a29faf8c94331b8bb847c6
