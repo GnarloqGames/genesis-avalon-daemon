@@ -8,7 +8,7 @@ image_pull_secrets:
 
 steps:
 - name: check
-  image: registry.0x42.in/library/genesis-avalon-builder:1.0.0
+  image: alfreddobradi/genesis-avalon-builder:1.0.0
   commands:
   - go test ./...
   - go build ./cmd/daemon/...
