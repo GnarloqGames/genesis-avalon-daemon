@@ -48,8 +48,15 @@ func (p *Process) Start(wg *sync.WaitGroup) {
 	originalDeadline := p.calculateDeadline()
 
 	p.SetStatus(StatusInProgress)
-	if err := p.Task.Run(context.Background(), p.stop); err != nil {
-		if err == ErrInterrupted {
+
+	timer := time.NewTimer(p.Task.GetDuration())
+
+	slog.Info("starting building", "name", p.Task.GetName(), "duration", p.Task.GetDuration().String())
+
+Listener:
+	for {
+		select {
+		case <-p.stop:
 			p.SetStatus(StatusInterrupted)
 
 			remaining := time.Until(originalDeadline)
@@ -66,19 +73,23 @@ func (p *Process) Start(wg *sync.WaitGroup) {
 			p.Remaining = remaining
 
 			return
-		} else {
-			p.SetStatus(StatusFailed)
-			return
+		case <-timer.C:
+			slog.Info("timer expired")
+			break Listener
 		}
+	}
+
+	if err := p.Task.Run(context.Background()); err != nil {
+		p.SetStatus(StatusFailed)
 	} else {
 		p.SetStatus(StatusDone)
-		return
 	}
 }
 
 func (p *Process) Stop() {
 	// Only send stop signals to tasks that are still running
 	if p.Status == StatusInProgress {
+		slog.Info("stopping process", "id", p.ID, "name", p.Task.GetName())
 		p.stop <- struct{}{}
 	}
 }

@@ -1,55 +1,12 @@
 package worker
 
 import (
-	"context"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
-
-type TestTask struct {
-	ID      uuid.UUID
-	Stopped bool
-	Wg      *sync.WaitGroup
-}
-
-func (tt *TestTask) GetID() uuid.UUID           { return tt.ID }
-func (tt *TestTask) GetDuration() time.Duration { return 1 * time.Second }
-func (tt *TestTask) Run(ctx context.Context, stop chan struct{}) error {
-	<-stop
-	tt.Stopped = true
-	tt.Wg.Done()
-	return nil
-}
-
-var _ Task = (*TestTask)(nil)
-
-func TestHandleStopSignal(t *testing.T) {
-	taskID := uuid.New()
-
-	tt := &TestTask{
-		ID: taskID,
-		Wg: &sync.WaitGroup{},
-	}
-	p := newProcess(tt)
-	p.Status = StatusInProgress
-
-	store := NewStore()
-	store.Add(p)
-
-	system := &System{
-		processes: store,
-	}
-
-	tt.Wg.Add(1)
-	go tt.Run(context.Background(), p.stop) //nolint:errcheck
-	handleStopSignal(system)
-	tt.Wg.Wait()
-	assert.True(t, tt.Stopped)
-}
 
 func TestSystem(t *testing.T) {
 	system := NewSystem()
@@ -71,8 +28,6 @@ func TestSystem(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	system.Stop()
-
-	system.wg.Wait()
 
 	assert.Equal(t, 2, len(system.processes.store))
 

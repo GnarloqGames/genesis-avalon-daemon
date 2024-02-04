@@ -21,19 +21,17 @@ type System struct {
 
 type Task interface {
 	GetID() uuid.UUID
+	GetName() string
 	GetDuration() time.Duration
-	Run(ctx context.Context, stop chan struct{}) error
+	Run(ctx context.Context) error
 }
 
 func NewSystem() *System {
 	system := &System{
-		processes: &ProcessStore{
-			mx:    &sync.Mutex{},
-			store: make(map[uuid.UUID]*Process),
-		},
-		inbox: make(chan Task),
-		stop:  make(chan struct{}),
-		wg:    &sync.WaitGroup{},
+		processes: NewStore(),
+		inbox:     make(chan Task),
+		stop:      make(chan struct{}),
+		wg:        &sync.WaitGroup{},
 	}
 
 	go func() {

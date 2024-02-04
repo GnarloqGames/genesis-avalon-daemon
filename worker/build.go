@@ -22,21 +22,11 @@ func (b *BuildTask) GetDuration() time.Duration {
 	return b.Duration
 }
 
-func (b *BuildTask) Run(ctx context.Context, stop chan struct{}) error {
-	timer := time.NewTimer(b.Duration)
+func (b *BuildTask) GetName() string {
+	return b.Name
+}
 
-	slog.Info("starting building", "name", b.Name, "duration", b.Duration.String())
-
-Listener:
-	for {
-		select {
-		case <-stop:
-			return ErrInterrupted
-		case <-timer.C:
-			break Listener
-		}
-	}
-
+func (b *BuildTask) Run(ctx context.Context) error {
 	slog.Info("building complete", "name", b.Name)
 	return nil
 }
