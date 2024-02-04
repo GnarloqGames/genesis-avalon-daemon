@@ -8,10 +8,10 @@ image_pull_secrets:
 
 steps:
 - name: check
-  image: registry.0x42.in/library/docker/genesis-avalon-builder:bookworm
+  image: alfreddobradi/genesis-avalon-builder:bookworm
   commands:
-  - go test ./...
+  - go test -cover ./...
   - go build ./cmd/daemon/...
 ---
 kind: signature
-hmac: 414ced4d3c925e07ff3da969095d2abb25b81cb18ed66fc7f2214929a838cb03
+hmac: b6f353f2ff7913c671010c5fd57278a1ff26381a1163eaeaa735043f3e5cbf05
