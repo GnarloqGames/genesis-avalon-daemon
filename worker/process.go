@@ -4,15 +4,17 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Process struct {
-	ID     uuid.UUID
-	Status Status
-	Task   Task
-	stop   chan struct{}
+	ID        uuid.UUID
+	Status    Status
+	Task      Task
+	Remaining time.Duration
+	stop      chan struct{}
 }
 
 func newProcess(task Task) *Process {
@@ -43,10 +45,26 @@ func (p *Process) Start(wg *sync.WaitGroup) {
 		return
 	}
 
+	originalDeadline := p.calculateDeadline()
+
 	p.SetStatus(StatusInProgress)
 	if err := p.Task.Run(context.Background(), p.stop); err != nil {
 		if err == ErrInterrupted {
 			p.SetStatus(StatusInterrupted)
+
+			remaining := time.Until(originalDeadline)
+			if remaining < 0 {
+				slog.Warn("task was interrupted but remaining time less than 0",
+					"task_id", p.ID,
+					"status", p.Status.String(),
+					"remaining", remaining.String(),
+				)
+				return
+			}
+
+			slog.Info("calculated remaining time", "status", p.Status.String(), "remaining", remaining)
+			p.Remaining = remaining
+
 			return
 		} else {
 			p.SetStatus(StatusFailed)
@@ -91,4 +109,8 @@ func (p *ProcessStore) Range(action func(pp *Process)) {
 	for _, process := range p.store {
 		action(process)
 	}
+}
+
+func (p *Process) calculateDeadline() time.Time {
+	return time.Now().Add(p.Task.GetDuration())
 }

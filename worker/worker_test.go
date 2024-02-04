@@ -16,7 +16,8 @@ type TestTask struct {
 	Wg      *sync.WaitGroup
 }
 
-func (tt *TestTask) GetID() uuid.UUID { return tt.ID }
+func (tt *TestTask) GetID() uuid.UUID           { return tt.ID }
+func (tt *TestTask) GetDuration() time.Duration { return 1 * time.Second }
 func (tt *TestTask) Run(ctx context.Context, stop chan struct{}) error {
 	<-stop
 	tt.Stopped = true
@@ -57,13 +58,13 @@ func TestSystem(t *testing.T) {
 	longID := uuid.New()
 	system.Inbox() <- &BuildTask{
 		Name:     "test",
-		Duration: "500ms",
+		Duration: 500 * time.Millisecond,
 		ID:       shortID,
 	}
 
 	system.Inbox() <- &BuildTask{
 		Name:     "test",
-		Duration: "10s",
+		Duration: 10 * time.Second,
 		ID:       longID,
 	}
 

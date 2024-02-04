@@ -21,39 +21,8 @@ type System struct {
 
 type Task interface {
 	GetID() uuid.UUID
+	GetDuration() time.Duration
 	Run(ctx context.Context, stop chan struct{}) error
-}
-
-type BuildTask struct {
-	ID       uuid.UUID
-	Name     string
-	Duration string
-}
-
-func (b *BuildTask) GetID() uuid.UUID {
-	return b.ID
-}
-
-func (b *BuildTask) Run(ctx context.Context, stop chan struct{}) error {
-	dur, err := time.ParseDuration(b.Duration)
-	if err != nil {
-		return err
-	}
-
-	timer := time.NewTimer(dur)
-	slog.Info("starting building", "name", b.Name, "duration", dur.String())
-Listener:
-	for {
-		select {
-		case <-stop:
-			return ErrInterrupted
-		case <-timer.C:
-			break Listener
-		}
-	}
-
-	slog.Info("building complete", "name", b.Name)
-	return nil
 }
 
 func NewSystem() *System {
