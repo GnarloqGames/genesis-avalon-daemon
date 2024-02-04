@@ -8,7 +8,7 @@ image_pull_secrets:
 
 steps:
 - name: check
-  image: alfreddobradi/genesis-avalon-builder:1.0.0
+  image: registry.0x42.in/library/docker/genesis-avalon-builder:bookworm
   commands:
   - go test ./...
   - go build ./cmd/daemon/...
