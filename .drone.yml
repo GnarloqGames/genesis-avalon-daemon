@@ -4,7 +4,7 @@ type: kubernetes
 name: default
 
 image_pull_secrets:
-- HARBOR_CREDENTIALS
+- dockerconfig
 
 steps:
 - name: check
