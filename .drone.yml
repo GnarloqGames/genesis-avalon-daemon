@@ -3,12 +3,15 @@ kind: pipeline
 type: kubernetes
 name: default
 
+image_pull_secrets:
+- HARBOR_CREDENTIALS
+
 steps:
 - name: check
-  image: golang
+  image: registry.0x42.in/library/genesis-avalon-builder:1.0.0
   commands:
   - go test ./...
   - go build ./cmd/daemon/...
 ---
 kind: signature
-hmac: 424a77569032277aa04865c87201d801eac73a2665a29faf8c94331b8bb847c6
+hmac: 414ced4d3c925e07ff3da969095d2abb25b81cb18ed66fc7f2214929a838cb03
