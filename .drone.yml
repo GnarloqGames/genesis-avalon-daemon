@@ -1,0 +1,17 @@
+---
+kind: pipeline
+type: kubernetes
+name: default
+
+image_pull_secrets:
+- dockerconfig
+
+steps:
+- name: check
+  image: alfreddobradi/genesis-avalon-builder:bookworm
+  commands:
+  - go test -cover ./...
+  - go build ./cmd/daemon/...
+---
+kind: signature
+hmac: b6f353f2ff7913c671010c5fd57278a1ff26381a1163eaeaa735043f3e5cbf05

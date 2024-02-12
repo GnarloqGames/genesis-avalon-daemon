@@ -1,59 +1,100 @@
 package worker
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/agiledragon/gomonkey/v2"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
+
+var (
+	short = 500 * time.Millisecond
+	long  = 15 * time.Second
+)
+
+type TestTask struct {
+	Name  string
+	ID    uuid.UUID
+	Error error
+}
+
+func (tt *TestTask) GetID() uuid.UUID           { return tt.ID }
+func (tt *TestTask) GetDuration() time.Duration { return 5 * time.Second }
+func (tt *TestTask) GetName() string            { return tt.Name }
+func (tt *TestTask) Run(ctx context.Context) error {
+	slog.Debug("running test task")
+	return tt.Error
+}
+
+var _ Task = (*TestTask)(nil)
 
 func TestRunTask(t *testing.T) {
 
 	tests := []struct {
-		name           string
-		duration       string
-		interrupt      bool
-		status         Status
-		expectedStatus Status
+		task              Task
+		interrupt         bool
+		status            Status
+		expectedStatus    Status
+		expectedRemaining bool
+		invalidDeadline   bool
 	}{
 		{
-			name:           "done",
-			duration:       "500ms",
-			interrupt:      false,
-			status:         StatusPending,
-			expectedStatus: StatusDone,
+			task: &BuildTask{
+				Name:     "done",
+				Duration: short,
+			},
+			interrupt:         false,
+			status:            StatusPending,
+			expectedStatus:    StatusDone,
+			expectedRemaining: false,
+			invalidDeadline:   false,
 		},
 		{
-			name:           "interrupted",
-			duration:       "30s",
-			interrupt:      true,
-			status:         StatusPending,
-			expectedStatus: StatusInterrupted,
+			task: &BuildTask{
+				Name:     "interrupted",
+				Duration: long,
+			},
+			interrupt:         true,
+			status:            StatusPending,
+			expectedStatus:    StatusInterrupted,
+			expectedRemaining: true,
+			invalidDeadline:   false,
 		},
 		{
-			name:           "error",
-			duration:       "invalid",
-			interrupt:      false,
-			status:         StatusPending,
-			expectedStatus: StatusFailed,
+			task: &BuildTask{
+				Name:     "started",
+				Duration: short,
+			},
+			interrupt:         false,
+			status:            StatusDone,
+			expectedStatus:    StatusDone,
+			expectedRemaining: false,
+			invalidDeadline:   false,
 		},
 		{
-			name:           "started",
-			duration:       "500ms",
-			interrupt:      false,
-			status:         StatusDone,
-			expectedStatus: StatusDone,
+			task: &TestTask{
+				Name:  "error",
+				ID:    uuid.New(),
+				Error: fmt.Errorf("test error"),
+			},
+			interrupt:         false,
+			status:            StatusPending,
+			expectedStatus:    StatusFailed,
+			expectedRemaining: false,
+			invalidDeadline:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		tf := func(t *testing.T) {
-			task := &BuildTask{
-				Name:     tt.name,
-				Duration: tt.duration,
-			}
-			process := newProcess(task)
+			process := newProcess(tt.task)
 			process.Status = tt.status
 
 			wg := &sync.WaitGroup{}
@@ -66,7 +107,41 @@ func TestRunTask(t *testing.T) {
 			wg.Wait()
 
 			assert.Equal(t, tt.expectedStatus, process.Status)
+
+			if tt.expectedRemaining {
+				assert.Greater(t, process.Remaining, time.Duration(0))
+			}
 		}
-		t.Run(tt.name, tf)
+		t.Run(tt.task.GetName(), tf)
 	}
+}
+
+func TestInvalidDeadline(t *testing.T) {
+	task := &BuildTask{
+		ID:       uuid.New(),
+		Name:     "test",
+		Duration: 30 * time.Second,
+	}
+	process := newProcess(task)
+	process.Status = StatusPending
+
+	buf := bytes.NewBuffer([]byte(""))
+	logger := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{}))
+	slog.SetDefault(logger)
+
+	patches := gomonkey.ApplyPrivateMethod(process, "calculateDeadline", func(_ *Process) time.Time {
+		return time.Now().Add(-1 * 1 * time.Hour)
+	})
+	defer patches.Reset()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go process.Start(wg)
+	time.Sleep(1 * time.Second)
+	process.Stop()
+	wg.Wait()
+
+	assert.Equal(t, StatusInterrupted, process.Status)
+	assert.Contains(t, buf.String(), "task was interrupted but remaining time less than 0")
+	assert.Equal(t, process.Remaining, time.Duration(0))
 }
