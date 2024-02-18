@@ -64,6 +64,7 @@ func handleInboxTask(system *System, task Task) {
 	system.processes.Add(process)
 
 	system.wg.Add(1)
+
 	go process.Start(system.wg)
 }
 

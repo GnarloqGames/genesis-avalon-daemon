@@ -34,6 +34,7 @@ func (p *Process) SetStatus(status Status) {
 		"new_status", status,
 		"task_id", p.Task.GetID(),
 	)
+
 	p.Status = status
 }
 
