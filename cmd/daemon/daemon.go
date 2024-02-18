@@ -16,9 +16,7 @@ import (
 )
 
 var (
-	cfgFile  string
-	logLevel string
-	logKind  string
+	cfgFile string
 )
 
 const (
@@ -38,7 +36,7 @@ var startCmd = &cobra.Command{
 		stopChan := make(chan os.Signal, 1)
 		signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
 
-		bus, err := initMessageBus(cmd) // TODO move this inside router
+		bus, err := initMessageBus(cmd)
 		if err != nil {
 			return err
 		}
@@ -105,10 +103,12 @@ func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {
 	if err != nil {
 		natsAddress = defaultNatsAddress
 	}
+
 	natsEncoder, err := cmd.Flags().GetString("nats-encoder")
 	if err != nil {
 		natsEncoder = defaultNatsEncoder
 	}
+
 	encoder := transport.ParseEncoder(natsEncoder)
 	config := transport.DefaultConfig
 	config.URL = natsAddress

@@ -29,6 +29,7 @@ func New(bus *transport.Connection, pool *worker.System) *Router {
 	if err != nil {
 		slog.Warn("failed to subscribe", "topic", "test")
 	}
+
 	router.subscriptions["test"] = sub
 
 	return router
