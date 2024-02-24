@@ -25,9 +25,10 @@ type TestTask struct {
 	Error error
 }
 
-func (tt *TestTask) GetID() uuid.UUID           { return tt.ID }
-func (tt *TestTask) GetDuration() time.Duration { return 5 * time.Second }
-func (tt *TestTask) GetName() string            { return tt.Name }
+func (tt *TestTask) GetID() uuid.UUID             { return tt.ID }
+func (tt *TestTask) GetDuration() time.Duration   { return 5 * time.Second }
+func (tt *TestTask) GetName() string              { return tt.Name }
+func (tt *TestTask) UpdateDB(status Status) error { return nil }
 func (tt *TestTask) Run(ctx context.Context) error {
 	slog.Debug("running test task")
 	return tt.Error

@@ -35,6 +35,16 @@ func (p *Process) SetStatus(status Status) {
 		"task_id", p.Task.GetID(),
 	)
 
+	if err := p.Task.UpdateDB(status); err != nil {
+		slog.Warn("failed to update status in database",
+			"error", err,
+			"process_id", p.ID,
+			"old_status", p.Status,
+			"new_status", status,
+			"task_id", p.Task.GetID(),
+		)
+	}
+
 	p.Status = status
 }
 
@@ -52,7 +62,7 @@ func (p *Process) Start(wg *sync.WaitGroup) {
 
 	timer := time.NewTimer(p.Task.GetDuration())
 
-	slog.Info("starting building", "name", p.Task.GetName(), "duration", p.Task.GetDuration().String())
+	slog.Info("starting task", "name", p.Task.GetName(), "duration", p.Task.GetDuration().String())
 
 Listener:
 	for {
@@ -80,6 +90,12 @@ Listener:
 		}
 	}
 
+	// If the status is anything else than in progress peace out
+	if p.Status != StatusInProgress {
+		return
+	}
+
+	// Execute the task and update the status
 	if err := p.Task.Run(context.Background()); err != nil {
 		p.SetStatus(StatusFailed)
 	} else {

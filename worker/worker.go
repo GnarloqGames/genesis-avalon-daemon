@@ -23,6 +23,7 @@ type Task interface {
 	GetID() uuid.UUID
 	GetName() string
 	GetDuration() time.Duration
+	UpdateDB(status Status) error
 	Run(ctx context.Context) error
 }
 
