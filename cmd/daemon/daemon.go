@@ -7,9 +7,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/GnarloqGames/genesis-avalon-daemon/config"
 	"github.com/GnarloqGames/genesis-avalon-daemon/logging"
 	"github.com/GnarloqGames/genesis-avalon-daemon/router"
 	"github.com/GnarloqGames/genesis-avalon-daemon/worker"
+	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -42,6 +44,11 @@ var startCmd = &cobra.Command{
 		}
 		defer bus.Close()
 
+		// Try connecting to Couchbase to catch issues at runtime
+		if _, err := couchbase.Get(); err != nil {
+			return err
+		}
+
 		pool := worker.NewSystem()
 
 		router.New(bus, pool)
@@ -63,14 +70,42 @@ func main() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	startCmd.Flags().String("nats-address", "127.0.0.1:4222", "NATS address")
-	startCmd.Flags().String("nats-encoding", "json", "NATS encoding")
-
-	rootCmd.PersistentFlags().String("log-level", "info", "log level (default is info)")
-	rootCmd.PersistentFlags().String("log-kind", "text", "log kind (text or json, default is text)")
+	rootCmd.PersistentFlags().String(config.FlagEnvironment, "development", "environment")
+	rootCmd.PersistentFlags().String(config.FlagNatsAddress, "127.0.0.1:4222", "NATS address")
+	rootCmd.PersistentFlags().String(config.FlagNatsEncoding, "json", "NATS encoding")
+	rootCmd.PersistentFlags().String(config.FlagCouchbaseURL, "127.0.0.1", "Couchbase host")
+	rootCmd.PersistentFlags().String(config.FlagCouchbaseBucket, "default", "Couchbase bucket")
+	rootCmd.PersistentFlags().String(config.FlagCouchbaseUsername, "", "Couchbase username")
+	rootCmd.PersistentFlags().String(config.FlagCouchbasePassword, "", "Couchbase password")
+	rootCmd.PersistentFlags().String(config.FlagLogLevel, "info", "log level (default is info)")
+	rootCmd.PersistentFlags().String(config.FlagLogKind, "text", "log kind (text or json, default is text)")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/gatewayd/config.yaml)")
-	viper.SetDefault("log-level", "info")
-	viper.SetDefault("log-kind", "text")
+
+	envPrefix := config.EnvPrefix
+	bindFlags := map[string]string{
+		config.FlagEnvironment:       config.EnvEnvironment,
+		config.FlagLogKind:           config.EnvLogKind,
+		config.FlagNatsAddress:       config.EnvNatsAddress,
+		config.FlagNatsEncoding:      config.EnvNatsEncoding,
+		config.FlagCouchbaseURL:      config.EnvCouchbaseURL,
+		config.FlagCouchbaseBucket:   config.EnvCouchbaseBucket,
+		config.FlagCouchbaseUsername: config.EnvCouchbaseUsername,
+		config.FlagCouchbasePassword: config.EnvCouchbasePassword,
+	}
+
+	for flag, env := range bindFlags {
+		if err := viper.BindPFlag(flag, rootCmd.PersistentFlags().Lookup(flag)); err != nil {
+			slog.Warn("failed to bind flag", "error", err, "name", flag)
+		}
+
+		env = fmt.Sprintf("%s_%s", envPrefix, env)
+		if err := viper.BindEnv(flag, env); err != nil {
+			slog.Warn("failed to bind env", "error", err, "flag", flag, "env", env)
+		}
+	}
+
+	viper.SetDefault(config.FlagLogLevel, "info")
+	viper.SetDefault(config.FlagLogKind, "text")
 	viper.SetDefault("author", "Alfred Dobradi <alfreddobradi@gmail.com>")
 	viper.SetDefault("license", "MIT")
 
@@ -96,6 +131,8 @@ func initConfig() {
 	if err := logging.Init(); err != nil {
 		slog.Error("failed to create logger", "error", err.Error())
 	}
+
+	setConfigs()
 }
 
 func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {

@@ -43,9 +43,9 @@ func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
 		res := &proto.BuildResponse{
 			Header: &proto.ResponseHeader{
 				Timestamp: timestamppb.Now(),
-				Status:    proto.Status_OK,
+				Status:    proto.Status_ERROR,
 			},
-			Response: "hi",
+			Response: "failed to parse task duration",
 		}
 
 		if err := r.bus.Publish(reply, res); err != nil {
@@ -53,6 +53,23 @@ func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
 		}
 
 		return
+	}
+
+	ownerField, ok := b.Context.Fields["owner"]
+	if !ok {
+		slog.Error("owner value missing")
+
+		res := &proto.BuildResponse{
+			Header: &proto.ResponseHeader{
+				Timestamp: timestamppb.Now(),
+				Status:    proto.Status_ERROR,
+			},
+			Response: "owner value missing",
+		}
+
+		if err := r.bus.Publish(reply, res); err != nil {
+			slog.Warn("Failed to publish response", "error", err.Error(), "subject", reply)
+		}
 	}
 
 	res := &proto.BuildResponse{
@@ -63,10 +80,14 @@ func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
 		Response: "hi",
 	}
 
+	// owner := b.Context.Fields["owner"].GetStringValue()
+	// spew.Dump(owner)
+
 	r.pool.Inbox() <- &worker.BuildTask{
 		ID:       uuid.New(),
 		Name:     b.Name,
 		Duration: dur,
+		Owner:    ownerField.GetStringValue(),
 	}
 
 	if err := r.bus.Publish(reply, res); err != nil {
