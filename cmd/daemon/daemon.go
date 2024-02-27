@@ -84,6 +84,7 @@ func init() {
 	envPrefix := config.EnvPrefix
 	bindFlags := map[string]string{
 		config.FlagEnvironment:       config.EnvEnvironment,
+		config.FlagLogLevel:          config.EnvLogLevel,
 		config.FlagLogKind:           config.EnvLogKind,
 		config.FlagNatsAddress:       config.EnvNatsAddress,
 		config.FlagNatsEncoding:      config.EnvNatsEncoding,
