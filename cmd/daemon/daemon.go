@@ -38,7 +38,7 @@ var startCmd = &cobra.Command{
 		stopChan := make(chan os.Signal, 1)
 		signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM)
 
-		bus, err := initMessageBus(cmd)
+		bus, err := initMessageBus()
 		if err != nil {
 			return err
 		}
@@ -136,14 +136,14 @@ func initConfig() {
 	setConfigs()
 }
 
-func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {
-	natsAddress, err := cmd.Flags().GetString("nats-address")
-	if err != nil {
+func initMessageBus() (*transport.Connection, error) {
+	natsAddress := viper.GetString(config.FlagNatsAddress)
+	if natsAddress == "" {
 		natsAddress = defaultNatsAddress
 	}
 
-	natsEncoder, err := cmd.Flags().GetString("nats-encoder")
-	if err != nil {
+	natsEncoder := viper.GetString(config.FlagNatsEncoding)
+	if natsEncoder == "" {
 		natsEncoder = defaultNatsEncoder
 	}
 
@@ -151,6 +151,8 @@ func initMessageBus(cmd *cobra.Command) (*transport.Connection, error) {
 	config := transport.DefaultConfig
 	config.URL = natsAddress
 	config.Encoder = encoder
+
+	slog.Info("connecting to NATS service", "address", natsAddress, "encoder", natsEncoder)
 
 	bus, err := transport.NewEncodedConn(config)
 	if err != nil {
