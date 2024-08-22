@@ -11,7 +11,6 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-daemon/logging"
 	"github.com/GnarloqGames/genesis-avalon-daemon/router"
 	"github.com/GnarloqGames/genesis-avalon-daemon/worker"
-	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -44,11 +43,6 @@ var startCmd = &cobra.Command{
 		}
 		defer bus.Close()
 
-		// Try connecting to Couchbase to catch issues at runtime
-		if _, err := couchbase.Get(); err != nil {
-			return err
-		}
-
 		pool := worker.NewSystem()
 
 		router.New(bus, pool)
@@ -72,7 +66,6 @@ func init() {
 
 	rootCmd.PersistentFlags().String(config.FlagEnvironment, "development", "environment")
 	rootCmd.PersistentFlags().String(config.FlagNatsAddress, "127.0.0.1:4222", "NATS address")
-	rootCmd.PersistentFlags().String(config.FlagNatsEncoding, "json", "NATS encoding")
 	rootCmd.PersistentFlags().String(config.FlagCouchbaseURL, "127.0.0.1", "Couchbase host")
 	rootCmd.PersistentFlags().String(config.FlagCouchbaseBucket, "default", "Couchbase bucket")
 	rootCmd.PersistentFlags().String(config.FlagCouchbaseUsername, "", "Couchbase username")
@@ -83,15 +76,10 @@ func init() {
 
 	envPrefix := config.EnvPrefix
 	bindFlags := map[string]string{
-		config.FlagEnvironment:       config.EnvEnvironment,
-		config.FlagLogLevel:          config.EnvLogLevel,
-		config.FlagLogKind:           config.EnvLogKind,
-		config.FlagNatsAddress:       config.EnvNatsAddress,
-		config.FlagNatsEncoding:      config.EnvNatsEncoding,
-		config.FlagCouchbaseURL:      config.EnvCouchbaseURL,
-		config.FlagCouchbaseBucket:   config.EnvCouchbaseBucket,
-		config.FlagCouchbaseUsername: config.EnvCouchbaseUsername,
-		config.FlagCouchbasePassword: config.EnvCouchbasePassword,
+		config.FlagEnvironment: config.EnvEnvironment,
+		config.FlagLogLevel:    config.EnvLogLevel,
+		config.FlagLogKind:     config.EnvLogKind,
+		config.FlagNatsAddress: config.EnvNatsAddress,
 	}
 
 	for flag, env := range bindFlags {
@@ -142,24 +130,17 @@ func initMessageBus() (*transport.Connection, error) {
 		natsAddress = defaultNatsAddress
 	}
 
-	natsEncoder := viper.GetString(config.FlagNatsEncoding)
-	if natsEncoder == "" {
-		natsEncoder = defaultNatsEncoder
-	}
-
-	encoder := transport.ParseEncoder(natsEncoder)
 	config := transport.DefaultConfig
 	config.URL = natsAddress
-	config.Encoder = encoder
 
-	slog.Info("connecting to NATS service", "address", natsAddress, "encoder", natsEncoder)
+	slog.Info("connecting to NATS service", "address", natsAddress)
 
-	bus, err := transport.NewEncodedConn(config)
+	bus, err := transport.NewConn(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to NATS: %w", err)
 	}
 
-	slog.Info("established connection to NATS", "address", natsAddress, "encoding", natsEncoder)
+	slog.Info("established connection to NATS", "address", natsAddress)
 
 	return bus, nil
 }

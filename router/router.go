@@ -9,6 +9,7 @@ import (
 	"github.com/GnarloqGames/genesis-avalon-kit/transport"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
+	goproto "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -35,10 +36,30 @@ func New(bus *transport.Connection, pool *worker.System) *Router {
 	return router
 }
 
-func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
-	dur, err := time.ParseDuration(b.Duration)
+func (r *Router) HandleBuild(b *nats.Msg) {
+	var data proto.BuildRequest
+
+	if err := goproto.Unmarshal(b.Data, &data); err != nil {
+		slog.Error("failed to parse task", "error", err.Error())
+
+		res := &proto.BuildResponse{
+			Header: &proto.ResponseHeader{
+				Timestamp: timestamppb.Now(),
+				Status:    proto.Status_ERROR,
+			},
+			Response: "failed to parse task",
+		}
+
+		if err := transport.Respond(r.bus, b.Reply, res); err != nil {
+			slog.Warn("Failed to publish response", "error", err.Error(), "subject", b.Reply)
+		}
+
+		return
+	}
+
+	dur, err := time.ParseDuration(data.Duration)
 	if err != nil {
-		slog.Error("failed to parse task duration", "duration", b.Duration)
+		slog.Error("failed to parse task duration", "duration", data.Duration)
 
 		res := &proto.BuildResponse{
 			Header: &proto.ResponseHeader{
@@ -48,14 +69,14 @@ func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
 			Response: "failed to parse task duration",
 		}
 
-		if err := r.bus.Publish(reply, res); err != nil {
-			slog.Warn("Failed to publish response", "error", err.Error(), "subject", reply)
+		if err := transport.Respond(r.bus, b.Reply, res); err != nil {
+			slog.Warn("Failed to publish response", "error", err.Error(), "subject", b.Reply)
 		}
 
 		return
 	}
 
-	ownerField, ok := b.Context.Fields["owner"]
+	ownerField, ok := data.Context.Fields["owner"]
 	if !ok {
 		slog.Error("owner value missing")
 
@@ -67,9 +88,16 @@ func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
 			Response: "owner value missing",
 		}
 
-		if err := r.bus.Publish(reply, res); err != nil {
-			slog.Warn("Failed to publish response", "error", err.Error(), "subject", reply)
+		if err := transport.Respond(r.bus, b.Reply, res); err != nil {
+			slog.Warn("Failed to publish response", "error", err.Error(), "subject", b.Reply)
 		}
+	}
+
+	r.pool.Inbox() <- &worker.BuildTask{
+		ID:       uuid.New(),
+		Name:     data.Name,
+		Duration: dur,
+		Owner:    ownerField.GetStringValue(),
 	}
 
 	res := &proto.BuildResponse{
@@ -77,20 +105,10 @@ func (r *Router) HandleBuild(subj, reply string, b *proto.BuildRequest) {
 			Timestamp: timestamppb.Now(),
 			Status:    proto.Status_OK,
 		},
-		Response: "hi",
+		Response: "building queued",
 	}
 
-	// owner := b.Context.Fields["owner"].GetStringValue()
-	// spew.Dump(owner)
-
-	r.pool.Inbox() <- &worker.BuildTask{
-		ID:       uuid.New(),
-		Name:     b.Name,
-		Duration: dur,
-		Owner:    ownerField.GetStringValue(),
-	}
-
-	if err := r.bus.Publish(reply, res); err != nil {
-		slog.Warn("Failed to publish response", "error", err.Error(), "subject", reply)
+	if err := transport.Respond(r.bus, b.Reply, res); err != nil {
+		slog.Warn("Failed to publish response", "error", err.Error(), "subject", b.Reply)
 	}
 }

@@ -11,7 +11,7 @@ import (
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -107,10 +107,10 @@ func TestRunTask(t *testing.T) {
 			}
 			wg.Wait()
 
-			assert.Equal(t, tt.expectedStatus, process.Status)
+			require.Equal(t, tt.expectedStatus, process.Status)
 
 			if tt.expectedRemaining {
-				assert.Greater(t, process.Remaining, time.Duration(0))
+				require.Greater(t, process.Remaining, time.Duration(0))
 			}
 		}
 		t.Run(tt.task.GetName(), tf)
@@ -142,7 +142,7 @@ func TestInvalidDeadline(t *testing.T) {
 	process.Stop()
 	wg.Wait()
 
-	assert.Equal(t, StatusInterrupted, process.Status)
-	assert.Contains(t, buf.String(), "task was interrupted but remaining time less than 0")
-	assert.Equal(t, process.Remaining, time.Duration(0))
+	require.Equal(t, StatusInterrupted, process.Status)
+	require.Contains(t, buf.String(), "task was interrupted but remaining time less than 0")
+	require.Equal(t, process.Remaining, time.Duration(0))
 }
