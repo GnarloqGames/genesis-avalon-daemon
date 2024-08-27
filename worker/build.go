@@ -34,16 +34,16 @@ func (b *BuildTask) UpdateDB(status Status) error {
 		return err
 	}
 
-	return nil
-
 	// itemBlueprint := registry.Building{
 	// 	ID:     b.ID.String(),
 	// 	Owner:  b.Owner,
 	// 	Name:   b.Name,
 	// 	Status: status.String(),
 	// }
-
+	//
 	// return db.Upsert(item)
+
+	return nil
 }
 
 func (b *BuildTask) Run(ctx context.Context) error {
