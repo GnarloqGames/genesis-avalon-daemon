@@ -2,10 +2,10 @@ module github.com/GnarloqGames/genesis-avalon-daemon
 
 go 1.21.0
 
-replace github.com/GnarloqGames/genesis-avalon-kit => ../genesis-avalon-kit
+// replace github.com/GnarloqGames/genesis-avalon-kit => ../genesis-avalon-kit
 
 require (
-	github.com/GnarloqGames/genesis-avalon-kit v0.8.0
+	github.com/GnarloqGames/genesis-avalon-kit v0.10.0-pre.0
 	github.com/agiledragon/gomonkey/v2 v2.11.0
 	github.com/google/uuid v1.6.0
 	github.com/nats-io/nats.go v1.37.0

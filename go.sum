@@ -1,3 +1,5 @@
+github.com/GnarloqGames/genesis-avalon-kit v0.10.0-pre.0 h1:cFoFOlOgopuV7kQmyqsNUMHU4l89LJ4pyEj+MJCEDXA=
+github.com/GnarloqGames/genesis-avalon-kit v0.10.0-pre.0/go.mod h1:Na7M3lHIT0YSWNIh53rjGksbEqE5pflOMUwKbPqcbns=
 github.com/Masterminds/squirrel v1.5.4 h1:uUcX/aBc8O7Fg9kaISIUsHXdKuqehiXAMQTYX8afzqM=
 github.com/Masterminds/squirrel v1.5.4/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
 github.com/agiledragon/gomonkey/v2 v2.11.0 h1:5oxSgA+tC1xuGsrIorR+sYiziYltmJyEZ9qA25b6l5U=
