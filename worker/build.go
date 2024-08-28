@@ -5,8 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/GnarloqGames/genesis-avalon-kit/database/couchbase"
-	"github.com/GnarloqGames/genesis-avalon-kit/registry"
+	"github.com/GnarloqGames/genesis-avalon-kit/database"
 	"github.com/google/uuid"
 )
 
@@ -30,19 +29,21 @@ func (b *BuildTask) GetName() string {
 }
 
 func (b *BuildTask) UpdateDB(status Status) error {
-	db, err := couchbase.Get()
+	_, err := database.Get()
 	if err != nil {
 		return err
 	}
 
-	item := registry.Building{
-		ID:     b.ID.String(),
-		Owner:  b.Owner,
-		Name:   b.Name,
-		Status: status.String(),
-	}
+	// itemBlueprint := registry.Building{
+	// 	ID:     b.ID.String(),
+	// 	Owner:  b.Owner,
+	// 	Name:   b.Name,
+	// 	Status: status.String(),
+	// }
+	//
+	// return db.Upsert(item)
 
-	return db.Upsert(item)
+	return nil
 }
 
 func (b *BuildTask) Run(ctx context.Context) error {
